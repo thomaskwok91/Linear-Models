@@ -1,0 +1,268 @@
+---
+title: "HW1"
+author: "Thomas Kwok"
+date: "February 20, 2019"
+output: word_document
+---
+
+Question 15:
+
+a.  Prepare a stem-and-leaf plot for each of the predictor variables. Are any noteworthy features revealed by these plots? 
+
+Running a stem and leaf plot, the main noteworthy thing is the difference in size between Xi1, Xi2, and Xi3. Especially Xi3 which is so much smaller than everything else.
+```{r}
+setwd("C:/Users/thoma/Desktop/Spring 2019/Linear Model 2")
+q15 <- read.csv('Ch6Q15.csv')
+attach(q15)
+stem(Xi1, scale = 1)
+stem(Xi2, scale = .5)
+stem(Xi3, scale= .2)
+```
+
+b. Obtain the scatter plot matrix and the correlation matrix. Interpret these and state your
+principal findings. 
+
+From the matrices it seems that there is a negative correlation between Yi and the three predictor variables. Also it seems that the predictor variables do have some correlation among each other also. This is especially interesting as I thought that Xi3 would not have any correlation with the other variables because it is so much smaller than the other variables in its values.
+```{r}
+pairs(q15)
+cor(q15)
+```
+
+c. Fit regression model (6.5) for three predictor variables to the data and state the estimated
+regression function. How is b2 interpreted here?
+
+The regression function would be Yi = 158.4913 - 1.1416(Xi1) -.4420(Xi2) -13.4702(Xi3). The b2 which is -.4420 can be intrepreted as the difference in predicted value for Y for each unit difference in Xi2 if Xi1 and Xi3 remains constant.
+
+```{r}
+lm1 <- lm(Yi ~., data=q15)
+summary(lm1)
+```
+
+d. Obtain the residuals and prepare a box plot of the residuals. Do there appear to be any
+outliers?
+
+According to the data there are definitely some outliers which are shown in the min and max. But according to the actual box plot, there doesn't seem to be any outlie
+
+```{r}
+lm1 <- lm(Yi ~., data=q15)
+res_lm1 <- resid(lm1)
+boxplot(res_lm1)
+plot(res_lm1)
+summary(res_lm1)
+```
+
+e.  Plot the residuals against Y, each of the predictor variables, and each two-factor interaction
+term on separate graphs. Also prepare a normal probability plot. Interpret your plots and
+summarize your findings. 
+
+Since the errors lie almost in a straight line, it means the errors may not be iid normal
+
+```{r}
+lm1 <- lm(Yi ~., data=q15)
+res <- resid(lm1)
+res_lm1 <- resid(lm1)
+qqnorm(res_lm1)
+qqline(res_lm1)
+```
+
+e. Can you conduct a formal test for lack of fit here?
+
+No you can not. Or at least I do not know how to.
+
+f.  Conduct the Breusch-Pagan test for constancy of the error variance.
+
+For the BP test, we want to have Ho be that the error variance is constant, and Ha to be that the error variance does change. With alpha as 0.1, it means that if the p-value is less than alpha, then the error variance is not constant. But from this test, we see that we can not come up with that conclusion from the test alone as the p-value is greater than alpha.
+
+```{r}
+#install.packages("lmtest")
+library(lmtest)
+bptest(lm1)
+detach(q15)
+```
+
+Question 16:
+
+a. Test whether there is a regression relation; use alpha = 0.1. State the alternative, decision, and conclusion. What does your test imply about betas? What is p-value?
+
+The Ho in this case is that there is no relationship between the betas as B1 = B2 = B3. The alternative is that the betas are not equal and they do impact Yi differently. Since our p-value is 1.542e-10, it is less than the alpha of 0.1 which means that there is a difference between the betas in comparison to Y.
+
+```{r}
+lm1 <- lm(Yi ~., data=q15)
+summary(lm1)
+```
+
+b. Obtain joint interval estimates of B1, B2, B3 using a 90 percent family confidence
+coefficient. Interpret your results
+
+Using a 90% confidence interval, it seems that each of the betas have a rather large difference between the two values for the confidence interval. This is especially true for Xi3 which makes sense with the data as it had numbers that were much smaller than the other two.
+
+```{r}
+confint(lm1, level = 0.9, type = 'Bonferroni')
+```
+
+c.  Calculate the coefficient of multiple determination. What does it indicate here?
+
+The R-square that I got was 0.6595 which means that approximately 66% of the data can be explained with a linear line of best fit according to this data. 
+
+```{r}
+summary(lm1)
+```
+
+Question 17:
+
+a. Obtain an interval estimate ofthe mean satisfaction when Xh1 = 35, Xh2 = 45, Xh3 = 2.2. Use a 90% confidence coefficient. Interpret your confidence interval.
+
+```{r}
+
+```
+
+
+b. Obtain a prediction interval for a new patient's satisfaction when Xh1 = 35, Xh2 = 45, and
+Xh3 = 2.2. Use a 90 percent confidence coefficient. Interpret your prediction interval
+
+```{r}
+
+```
+
+Question 18:
+
+a. Prepare a stem-and-leaf plot for each predictor variable. What information do these plots
+provide? 
+
+The stem and leaf plot show that the variables are all inconsistent with one another as Xi4 is much bigger than all of the other variables and Xi3 is much smaller than all of the variables. This is something of note when running them all to Yi in the future.
+
+```{r}
+q18 <- read.csv('Ch6Q18.csv')
+attach(q18)
+stem(Xi1, scale = .5)
+stem(Xi2, scale = .25)
+stem(Xi3, scale= .5)
+stem(Xi4, scale= 6)
+```
+
+b. Obtain the scatter plot matrix and the correlation matrix. Interpret these and state your
+principal findings. 
+
+According to the plot and correlation matrix, it seems that Xi3 and Xi4 have no correlation with one another, which is something I thought was true from the stem and leaf plot, since one was so much bigger than the other and the other was much smaller. Also unlike Q15, it seems only Xi1 seems to have a negative correlation with Yi and it seems that Xi4 has the biggest correlation with Yi while Xi3 has the smallest correlation.
+
+```{r}
+pairs(q18)
+cor(q18)
+```
+
+c. Fit regression model (6.5) for four predictor variables to the data. State the estimated
+regression function. 
+
+The regression function would be Yi = 1.22e1 -1.42e-01Xi +2.82e-1X2 +6.193e-1X3 + 7.924e-6X4
+
+```{r}
+lm1 <- lm(Yi ~., data=q18)
+summary(lm1)
+```
+
+d. Obtain the residuals and prepare a box plot of the residuals. Does the distribution appear to
+be fairly symmetrical?
+
+The box of the residuals seem to have a few outliers above and below the box plot but when I look at the plot by itself, it seems that most fit within 0,0.
+
+```{r}
+lm1 <- lm(Yi ~., data=q18)
+res_lm1 <- resid(lm1)
+boxplot(res_lm1)
+plot(res_lm1)
+summary(res_lm1)
+```
+
+e. Plot the residuals against Y, each predictor variable, and each two-factor interaction term on
+separate graphs. Also prepare a normal probability plot. Analyze yom' plots and summalize your findings.
+
+As I discovered from part d, it seems that the residuals do fit the line here as it seems symmetrical. So most fall within the qqnormalized line as shown on the data.
+```{r}
+lm1 <- lm(Yi ~., data=q18)
+res <- resid(lm1)
+res_lm1 <- resid(lm1)
+qqnorm(res_lm1)
+qqline(res_lm1)
+```
+
+f. Can you conduct a fonnal test for lack of fit here?
+
+For this specific data, it seems there is a fit here for most of the data points as it is symmetrical. So a lot do fit in the QQ plot line as shown from this result.
+
+g. Divide the 81 cases into two groups. placing the 40 cases with the smallest fitted values Yi
+into group 1 and the remaining cases into group 2. Conduct the Brown-Forsythe test for
+constancy of the error variance, using ex = .05. State the decision rule and conclusion.
+
+The decision rule would be that Ho represents if the error variance is consistent throughout the betas, and the alternative is if the error variance changes with the betas. According to my result, it seems that the data is not definitive enough to prove that the error variance changes with the differing beta as both are higher than our alpha of 0.05.
+
+```{r}
+library(lmtest)
+library(caret)
+set.seed(1234)
+sample <- createDataPartition(q18$Yi,
+                                p = 0.5,
+                                list = FALSE, groups = min(40, length(q18)))
+min  <- q18[ sample ,]
+max <- q18[ -sample ,]
+
+lm1 <- lm(min)
+lm2 <- lm(max)
+
+bptest(lm1)
+bptest(lm2)
+```
+
+Question 19:
+
+a. Test whether there is a regression relation using alpha = 0.05. State alternatives, decision rule, and conclusion.
+
+The Ho in this case is that there is no relationship between the betas as B1 = B2 = B3. The alternative is that the betas are not equal and they do impact Yi differently. Since our p-value is 7.272e-14, it is less than the alpha of 0.05 which means that there is a difference between the betas in comparison to Y. So we reject Ho and we accept the alternative that the betas do impact Yi differently.
+
+```{r}
+lm1 <- lm(Yi ~., data=q18)
+summary(lm1)
+```
+
+b. Estimate the Betas by using Bonferroni using a 95% interval. Interpret your findings.
+
+According to the Bonferroni 95% confidence interval, it seems that Xi4 has the biggest difference between the two ends while Xi2 and Xi3 do not have a big difference between the ends. Xi1 also does not seem to have a big difference between the two ends. This makes sense as Xi4 has the biggest numeric values.
+
+```{r}
+confint(lm1, level = 0.95, type = 'bonferroni')
+```
+
+c. Calculate R-square and interpret this measure.
+
+According to my linear model, the R-square is 0.5847 which means that 58.47% of the data can be explained by a linear line of best fit for the data.
+
+```{r}
+summary(lm1)
+detach(q18)
+```
+
+Question 20:
+
+Obtain the family of estimates using a 95 percent family confidence coefficient. Employ the
+most efficient procedure. 
+
+The most efficient procedure in this case was the Working-Hotelling DelTime procedure.
+
+```{r}
+library(investr)
+q20 <- read.csv('Ch6Q20.csv')
+lm1 <- lm(Yi~Xi1, data = q18)
+lm2 <- lm(Yi~Xi2, data = q18)
+lm3 <- lm(Yi~Xi3, data = q18)
+lm4 <- lm(Yi~Xi4, data = q18)
+
+plotFit((lm1), interval = 'confidence', k=.95, main = 'Working-Hotelling Yi ~ Xi1')
+plotFit((lm2), interval = 'confidence', k=.95, main = 'Working-Hotelling Yi ~ Xi2')
+plotFit((lm3), interval = 'confidence', k=.95, main = 'Working-Hotelling Yi ~ Xi3')
+plotFit((lm4), interval = 'confidence', k=.95, main = 'Working-Hotelling Yi ~ Xi4')
+
+```
+
+Question 21:
+
+Develop separate prediction intervals for the rental rates of these properties, using 95% statement confidence coefficient in each case. Can the rental rates of these three properties be predicted fairly precisely? What is the family confidence level for the set of three predictions?
+
