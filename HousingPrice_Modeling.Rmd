@@ -1,0 +1,305 @@
+---
+title: "HousingPrice_Modeling"
+author: "jianwen wu, natasha tuli, thomas kwok"
+date: "5/2/2019"
+output: html_document
+---
+
+```{r, warning=F, message=F, echo=F}
+library(recipes)
+library(olsrr)
+library(tidyverse)
+library(pander)
+```
+
+```{r, warning=F, message=F, echo=F}
+train_df <- read_csv("https://raw.githubusercontent.com/jianwenwu/glm-project/master/Data/training.csv")
+test_df <- read_csv("https://raw.githubusercontent.com/jianwenwu/glm-project/master/Data/validation.csv")
+```
+
+### 1. Data Cleaning
+```{r}
+
+data_process <- function(data, train = T, test = F){
+  
+  #convert into factor
+  df <- data %>%
+      mutate(MSSubClass = as.factor(MSSubClass),
+             OverallCond = as.factor(OverallCond),
+             YrSold = as.factor(YrSold), 
+             MoSold = as.factor(MoSold),
+             OverallQual = as.factor(OverallQual))
+  
+  #fill NA's With None ----
+  NA_cols_None <- c("PoolQC",
+                    "MiscFeature",
+                    "Alley",
+                    "Fence",
+                    "FireplaceQu",
+                    "GarageType",
+                    "GarageFinish",
+                    "GarageQual",
+                    "GarageCond",
+                    "BsmtQual",
+                    "BsmtCond",
+                    "BsmtExposure",
+                    "BsmtFinType1",
+                    "BsmtFinType2",
+                    "MasVnrType",
+                    "MSSubClass")
+  
+  df[,NA_cols_None][is.na(df[,NA_cols_None])] <- "None"
+  
+  #fill NA's with median of LotFrontage of Neighborhood ----
+  df <- df %>%
+    group_by(Neighborhood) %>%
+    mutate(LotFrontage = replace_na(LotFrontage, replace = median(LotFrontage, na.rm = T))) %>%
+    ungroup()
+  
+  
+  #fill NA's with 0 ----
+  NA_cols_0 <- (c(
+    "GarageYrBlt",
+    "GarageArea",
+    "GarageCars",
+    "BsmtFinSF1",
+    "BsmtFinSF2",
+    "BsmtUnfSF",
+    "TotalBsmtSF",
+    "BsmtFullBath",
+    "BsmtHalfBath",
+    "MasVnrArea"
+  ))
+  
+  df[,NA_cols_0][is.na(df[,NA_cols_0])] <- 0
+  
+  #fill NA's with most frequently appear ----
+  df <- df %>%
+    mutate(Electrical = str_replace_na(string = Electrical, replacement = "SBrkr")) %>% 
+    mutate(
+      #Create New Variable for YearBuilt ----
+      YearBuilt = ifelse(YearBuilt >= 1950, "New", "Old"),
+      #Transform SalePrice into LogSalePrice ----
+      Log_Sales_Price = log(SalePrice),
+      #Create New Variable for TotalBathroom ----
+      Total_Bathroom = BsmtFullBath + BsmtHalfBath + FullBath + HalfBath) %>%
+    
+    select(
+      GrLivArea, GarageArea, TotalBsmtSF, TotRmsAbvGrd, BedroomAbvGr,
+      YearBuilt, ExterQual, Neighborhood, BldgType, OverallQual, 
+      HeatingQC, Total_Bathroom, Log_Sales_Price)
+    
+  if(train){
+    return(df %>%
+           #filter outlier ----  
+           filter(GrLivArea < 4000) )
+  }
+  
+  if(test){
+    return(df)
+  }
+    
+}
+
+# run data_process function on train data
+train_processed <- data_process(train_df,train = T)
+
+
+
+#create dummy variables for all the nominal variables except variable "overallQual"
+rec_obj <- recipe(Log_Sales_Price~., data = train_processed) %>%
+  step_dummy(all_nominal(), -OverallQual) %>%
+  prep()
+
+#summary(rej_obj)
+
+train_processed_model <- bake(rec_obj, new_data = train_processed)
+
+
+glimpse(train_processed_model)
+
+
+```
+
+### 2. Modeling
+
+##### 2.1 Fit Linear Model on all 43 Variables against Log SalePrice
+```{r}
+lm_fit <- lm(Log_Sales_Price ~., data = train_processed_model) 
+
+lm_fit %>%
+  summary() %>%
+  pander::pander()
+
+```
+
+
+##### 2.2  Stepwise AIC Forward Regression
+
+###### 2.21 Summmary
+```{r}
+lm_fw_aic <- ols_step_forward_aic(lm_fit)
+
+lm_fw_aic
+```
+
+We performed Stepwise AIC Forward Regression on 43 predictors.  The algorithms chose 27 most important predictors for us.  The summary above show that the predictor "OverallQual" is the most important variable, follow by "GrLivArea", "YearBuilt_Old", and so on.
+
+
+###### 2.22 Plot
+```{r}
+fd_df <- tibble(
+  rank = c(seq(1,27,1)),
+  predictor = lm_fw_aic$predictors, 
+  adj_r2 = lm_fw_aic$arsq) 
+
+pander::pander(fd_df)
+
+
+#plot No. of Variables vs Adjust R2
+
+fd_df %>%
+  ggplot(aes(rank, adj_r2)) +
+  geom_point() +
+  geom_line() +
+  labs(x = "Number of Variables", y = "Adjust R2") +
+  scale_x_continuous(breaks = c(seq(1,27,1))) +
+  theme_bw()
+
+```
+
+We plot the 27 Predictors that was chose by Stepwise AIC Forward Regression against the Adjust R-Squared. As we can see, as the number of variables increased, the adjust R-Squared increased as well.  Adjusted R-Squared is modified version of R-squared that has been adjusted for the number of predictors in the model, and it penalized number of predictors was added.  In conclusion, we decided to keep all 27 predictors.
+
+
+##### 2.3 The responded function
+```{r}
+lm_fw_aic$model %>%
+  pander::pander()
+```
+
+##### 2.4 Model Diagnostics
+
+Multiple Linear Regression Assumptions
+
+* The errors has normal distribution
+* The errors has mean 0
+* Homoscedasticity of errors or equal variance
+* The errors are independent.
+
+
+###### 2.41 Residual QQ plot and Residual Histogram - normality assumption of errors
+```{r}
+#QQplot
+ols_plot_resid_qq(lm_fw_aic$model)
+
+#Histogram
+ols_plot_resid_hist(lm_fw_aic$model)
+```
+
+The QQ plot -  The residual points roughly lie within the lines. The Q-Q plot of the residuals suggests that the error terms are indeed normally distributed.
+
+The histogtram - The errors terms are indeed normally distributed.
+
+
+###### 2.42. Residual vs Fitted Values Plot.
+```{r}
+ols_plot_resid_fit(lm_fw_aic$model) 
+```
+
+* The residuals spread randomly around the 0 line indicating that the relationship is linear.
+
+* The residuals roughly horizontal band around the 0 line indicating homogeneity of error variance.(constant variance)
+
+* No residuals are away from random pattern of residuals indicating no outliers.
+
+###### 2.43 Correlation between actual log sale price and predicted log sale price
+* see how good our model
+```{r}
+tibble(
+  actual = train_processed_model$Log_Sales_Price,
+  predicted = lm_fw_aic$model$fitted.values
+) %>%
+  ggplot(aes(actual, predicted)) +
+  geom_point() +
+  geom_smooth(se = F, method = "lm") +
+  labs(x = "actual log sale price", y = "predicted log sale price") +
+  theme_bw()
+
+cor(train_processed_model$Log_Sales_Price, 
+    lm_fw_aic$model$fitted.values)
+```
+
+Based on the graph above, we can see that our model performed very good.  The correlation between acutal log sale price and predicted log sale price is 0.94.
+
+### 3. Prediction on Test Set
+
+
+* Bias
+* Maximum Deviation 
+* Mean Absolute Deviation 
+* Mean Square Error
+```{r}
+bias <- function(Y_hat, Y){
+  mean(Y_hat - Y)
+}
+
+Max_Dev <- function(Y_hat, Y){
+  max(abs(Y_hat - Y))
+}
+
+Mean_Abs_Dev <- function(Y_hat, Y){
+  mean(abs(Y_hat - Y))
+}
+
+Mean_sq_err <- function(Y_hat , Y){
+  mean((Y_hat - Y)^2)
+} 
+```
+
+###### 3.1 transform the test dataset - create dummmies
+```{r}
+
+test_processed <- data_process(test_df, train = F, test = T)
+test_processed_model <- bake(rec_obj, new_data = test_processed)
+
+```
+
+###### 3.2 make prediction on test dataset 
+
+```{r}
+
+# predction on log sale price
+predicted_value_log <- lm_fw_aic$model %>%
+  predict(test_processed_model)
+
+# prediction on sale price
+predicted_value <- exp(predicted_value_log)
+
+
+```
+
+###### 3.3 Evaluate the model 
+```{r}
+
+y_hat_test = predicted_value
+y_test = test_df$SalePrice
+
+#test
+tibble(
+  test_bias = bias(y_hat_test, y_test),
+  test_Max_Dev = Max_Dev(y_hat_test, y_test),
+  test_Mean_Abs_Dev = Mean_Abs_Dev(y_hat_test, y_test),
+  test_Mean_Sq_Err = Mean_sq_err(y_hat_test, y_test)
+) %>%
+  gather(key = "measure", value = "value") %>%
+  pander::pander()
+
+```
+
+###### 3.4 Export the prediction
+```{r}
+#predicted_value %>%
+# write.csv(predicted_value, "Predictied_Value.csv", na = "", row.names = F)
+```
+
+
